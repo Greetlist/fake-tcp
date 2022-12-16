@@ -1,8 +1,34 @@
 add_rules("mode.debug", "mode.release")
+set_languages("c++17")
+add_includedirs("src/")
 
-target("fake-tcp")
+target("util")
+    set_kind("static")
+    add_files("src/util/*.cc")
+
+target("logger")
+    set_kind("static")
+    add_files("src/logger/*.cc")
+
+target("epoll_server")
+    set_kind("static")
+    add_files("src/epoll_server/*.cc")
+    add_deps("logger", "util")
+    add_links("pthread")
+
+target("network")
+    set_kind("static")
+    add_files("src/network/*.cc")
+
+target("fake-tcp-server")
     set_kind("binary")
-    add_files("src/*.cpp")
+    add_files("src/server/*.cc")
+    add_deps("epoll_server", "logger", "network")
+
+-- target("fake-tcp-client")
+--     set_kind("binary")
+--     add_includedirs("src/")
+--     add_files("src/client/*.cc")
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
