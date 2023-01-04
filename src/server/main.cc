@@ -1,8 +1,11 @@
-#include "epoll_server/server_factory.h"
-#include "epoll_server/epoll_server_base.h"
+#include "server/server_epoll.h"
 
 int main(int argc, char** argv) {
-  ftcp::EpollServerBase* server = ftcp::EpollServerFactory::GetServer(ftcp::ServerType::UDP);
+  std::string raw_addr{argv[1]};
+  int raw_port = std::stoi(std::string{argv[2]});
+  std::string real_addr{argv[3]};
+  int real_port = std::stoi(std::string{argv[4]});
+  ftcp::ServerEpoll* server = new ftcp::ServerEpoll(raw_addr, raw_port, real_addr, real_port);
   server->Init();
   server->Start();
   return 0;

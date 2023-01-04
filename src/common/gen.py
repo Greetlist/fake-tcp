@@ -11,6 +11,7 @@ def gen_return_code():
         {'name': "FCNTL_ERROR", 'value': 2, 'msg': "fcntl create error"},
         {'name': "CREATE_SOCK_ERROR", 'value': 3, 'msg': "create socket error"},
         {'name': "BIND_ERROR", 'value': 4, 'msg': "socket bind error"},
+        {'name': "SETSOCKOPT_ERROR", 'value': 5, 'msg': "setsockopt error"},
     ]
     template_file = './return_code.h.j2'
 

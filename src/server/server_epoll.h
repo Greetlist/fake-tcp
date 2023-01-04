@@ -1,5 +1,5 @@
-#ifndef __EPOLL_UDP_SERVER_H_
-#define __EPOLL_UDP_SERVER_H_
+#ifndef __SERVER_EPOLL_H_
+#define __SERVER_EPOLL_H_
 
 #include <sys/epoll.h>
 #include <sys/types.h>
@@ -21,31 +21,31 @@
 #include "network/helper_base.h"
 #include "logger/logger.h"
 #include "epoll_server/global_def.h"
-#include "epoll_server/epoll_server_base.h"
+#include "util/fd_util.h"
 
 namespace ftcp {
 
-class EpollUDPServer : public EpollServerBase {
+class ServerEpoll {
  public:
-  explicit EpollUDPServer(const std::string&, const int&);
-  ~EpollUDPServer() {
+  explicit ServerEpoll(const std::string&, const int&, const std::string&, const int&);
+  ~ServerEpoll() {
     Stop();
   };
-  virtual ReturnCode Init();
-  virtual void Start();
-  virtual void Stop();
+  ReturnCode Init();
+  void Start();
+  void Stop();
  private:
-  ReturnCode InitListenSocket(); // listen socket recv packet from local application(client side).
-  ReturnCode InitRawSendSocket(); // raw socket, send raw packet to server
   ReturnCode InitRawRecvSocket(); // raw socket, recv raw packet from client
-  ReturnCode SendMsgWithFakeHeader();
+  ReturnCode InitSockFilter(); // Init filter for raw socket
+  ReturnCode InitRealSendSocket(); // send to real server
   void StartMainEpoll();
 
-  std::string listen_addr_;
-  int listen_port_;
-  int listen_fd_;
-  int packet_send_fd_;
-  int packet_recv_fd_;
+  std::string raw_addr_;
+  int raw_port_;
+  int raw_recv_fd_;
+  std::string real_addr_;
+  int real_port_;
+  int real_fd_;
   int main_ep_fd_;
   std::atomic<bool> stop_;
   static constexpr int kEventLen = 128;

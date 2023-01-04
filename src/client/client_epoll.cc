@@ -1,30 +1,32 @@
-#include "epoll_server/epoll_udp_server.h"
+#include "client/client_epoll.h"
 
 namespace ftcp {
 
-EpollUDPServer::EpollUDPServer(const std::string& listen_addr, const int& listen_port) : listen_addr_(listen_addr), listen_port_(listen_port) {
+ClientEpoll::ClientEpoll(const std::string& listen_addr, const int& listen_port, const std::string& server_addr, const int& server_port) : listen_addr_(listen_addr), listen_port_(listen_port), server_addr_(server_addr), server_port_(server_port) {
   stop_ = false;
 }
 
-ReturnCode EpollUDPServer::Init() {
+ReturnCode ClientEpoll::Init() {
   ReturnCode ret = ReturnCode::SUCCESS;
   main_ep_fd_ = epoll_create1(0);
   if (main_ep_fd_ < 0) {
     LOG_ERROR("Create epoll error");
     ret = ReturnCode::EP_CREATE_ERROR;
   }
+  ret = InitListenSocket();
+  ret = InitRawSendSocket();
   return ret;
 }
 
-void EpollUDPServer::Start() {
+void ClientEpoll::Start() {
   StartMainEpoll();
 }
 
-void EpollUDPServer::Stop() {
+void ClientEpoll::Stop() {
   stop_ = true;
 }
 
-ReturnCode EpollUDPServer::InitListenSocket() {
+ReturnCode ClientEpoll::InitListenSocket() {
   listen_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (listen_fd_ < 0) {
     LOG_ERROR("Socket Error");
@@ -62,7 +64,7 @@ ReturnCode EpollUDPServer::InitListenSocket() {
   return ReturnCode::SUCCESS;
 }
 
-ReturnCode EpollUDPServer::InitRawSendSocket() {
+ReturnCode ClientEpoll::InitRawSendSocket() {
   packet_send_fd_ = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
   if (packet_send_fd_ < 0) {
     LOG_ERROR("Create send raw socket error.");
@@ -81,34 +83,11 @@ ReturnCode EpollUDPServer::InitRawSendSocket() {
   return ReturnCode::SUCCESS;
 }
 
-ReturnCode EpollUDPServer::InitRawRecvSocket() {
-  packet_recv_fd_ = socket(AF_PACKET, SOCK_DGRAM, ETH_P_IP);
-  if (packet_recv_fd_ < 0) {
-    LOG_ERROR("Create send raw socket error.");
-    return ReturnCode::CREATE_SOCK_ERROR;
-  }
-  int ss = set_nonblock(packet_recv_fd_);
-  if (ss < 0) {
-    return ReturnCode::FCNTL_ERROR;
-  }
-
-  struct epoll_event ev;
-  memset(&ev, 0, sizeof(ev));
-  ev.data.fd = packet_recv_fd_;
-  ev.events = EPOLLIN | EPOLLET;
-  ss = epoll_ctl(main_ep_fd_, EPOLL_CTL_ADD, packet_recv_fd_, &ev);
-  if (ss < 0) {
-    LOG_ERROR("Epoll Add Error");
-    return ReturnCode::EP_CONTROL_ERROR;
-  }
+ReturnCode ClientEpoll::SendToServer() {
   return ReturnCode::SUCCESS;
 }
 
-ReturnCode EpollUDPServer::SendMsgWithFakeHeader() {
-  return ReturnCode::SUCCESS;
-}
-
-void EpollUDPServer::StartMainEpoll() {
+void ClientEpoll::StartMainEpoll() {
   struct epoll_event events[kEventLen];
   LOG_INFO("Start UDP Epoll Loop");
   struct sockaddr_storage peer_addr;
@@ -131,18 +110,7 @@ void EpollUDPServer::StartMainEpoll() {
             host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICSERV);
           LOG_INFO("Peer addr is: %s, port is: %d", host, std::stoi(std::string{port}));
           LOG_INFO("Data: %s.", read_buf);
-          //SendToPeer();
-        }
-      } else if (events[i].data.fd == packet_recv_fd_) { // read data from fake-tcp client, extract payload and send to real server
-        char read_buf[MAX_PACKET_SIZE];
-        int read_bytes_num = recvfrom(
-            packet_recv_fd_, read_buf, MAX_PACKET_SIZE, 0,
-            (struct sockaddr*)&peer_addr, &peer_addr_len);
-        if (read_bytes_num < 0 && errno != EAGAIN) {
-          LOG_ERROR("Read From Client Error");
-        } else {
-          //ExtractRawPacket();
-          //SendToLocalApplication();
+          //SendToSever();
         }
       }
     }
