@@ -25,6 +25,8 @@ enum class ReturnCode {
   CREATE_SOCK_ERROR = 3,
   BIND_ERROR = 4,
   SETSOCKOPT_ERROR = 5,
+  BIND_DEVICE_ERROR = 6,
+  IOCTL_ERROR = 7,
 };
 
 static std::unordered_map<ReturnCode, std::string> ret_msg {
@@ -35,6 +37,8 @@ static std::unordered_map<ReturnCode, std::string> ret_msg {
   { ReturnCode::CREATE_SOCK_ERROR, "create socket error" },
   { ReturnCode::BIND_ERROR, "socket bind error" },
   { ReturnCode::SETSOCKOPT_ERROR, "setsockopt error" },
+  { ReturnCode::BIND_DEVICE_ERROR, "socket bind device error" },
+  { ReturnCode::IOCTL_ERROR, "ioctl error" },
 };
 
 } //namespace ftcp

@@ -12,6 +12,8 @@ def gen_return_code():
         {'name': "CREATE_SOCK_ERROR", 'value': 3, 'msg': "create socket error"},
         {'name': "BIND_ERROR", 'value': 4, 'msg': "socket bind error"},
         {'name': "SETSOCKOPT_ERROR", 'value': 5, 'msg': "setsockopt error"},
+        {'name': "BIND_DEVICE_ERROR", 'value': 6, 'msg': "socket bind device error"},
+        {'name': "IOCTL_ERROR", 'value': 7, 'msg': "ioctl error"},
     ]
     template_file = './return_code.h.j2'
 

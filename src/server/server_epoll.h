@@ -4,6 +4,7 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <sys/uio.h>
 #include <netinet/in.h>
@@ -12,6 +13,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <linux/if_ether.h>
+#include <net/if.h>
 
 #include <atomic>
 #include <mutex>
@@ -36,9 +38,11 @@ class ServerEpoll {
   void Stop();
  private:
   ReturnCode InitRawRecvSocket(); // raw socket, recv raw packet from client
+  ReturnCode BindDevice();
   ReturnCode InitSockFilter(); // Init filter for raw socket
   ReturnCode InitRealSendSocket(); // send to real server
   void StartMainEpoll();
+  std::string TransportProtocol(unsigned char);
 
   std::string raw_addr_;
   int raw_port_;
