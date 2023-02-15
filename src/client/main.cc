@@ -1,11 +1,12 @@
 #include "client/client_epoll.h"
+#include "yaml-cpp/yaml.h"
+#include "gflags/gflags.h"
+
+DEFINE_string(config_file, "config.yml", "core config file");
 
 int main(int argc, char** argv) {
-  std::string listen_addr{argv[1]};
-  int listen_port = std::stoi(std::string{argv[2]});
-  std::string server_addr{argv[3]};
-  int server_port = std::stoi(std::string{argv[4]});
-  ftcp::ClientEpoll* client_epoll = new ftcp::ClientEpoll(listen_addr, listen_port, server_addr, server_port);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  ftcp::ClientEpoll* client_epoll = new ftcp::ClientEpoll(FLAGS_config_file);
   client_epoll->Init();
   client_epoll->Start();
   return 0;

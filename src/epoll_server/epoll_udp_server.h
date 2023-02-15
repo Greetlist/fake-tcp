@@ -18,7 +18,7 @@
 
 #include "common/return_code.h"
 #include "common/common_def.h"
-#include "network/helper_base.h"
+#include "network/struct_def.h"
 #include "logger/logger.h"
 #include "epoll_server/global_def.h"
 #include "epoll_server/epoll_server_base.h"

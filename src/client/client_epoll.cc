@@ -2,11 +2,12 @@
 
 namespace ftcp {
 
-ClientEpoll::ClientEpoll(const std::string& listen_addr, const int& listen_port, const std::string& server_addr, const int& server_port) : listen_addr_(listen_addr), listen_port_(listen_port), server_addr_(server_addr), server_port_(server_port) {
+ClientEpoll::ClientEpoll(const std::string& config_file): config_file_(config_file) {
   stop_ = false;
 }
 
 ReturnCode ClientEpoll::Init() {
+  config_ = YAML::LoadFile(config_file_);
   ReturnCode ret = ReturnCode::SUCCESS;
   main_ep_fd_ = epoll_create1(0);
   if (main_ep_fd_ < 0) {
@@ -36,8 +37,8 @@ ReturnCode ClientEpoll::InitListenSocket() {
   struct sockaddr_in server;
   memset(&server, 0, sizeof(server));
   server.sin_family = AF_INET;
-  server.sin_port = htons(listen_port_);
-  server.sin_addr.s_addr = inet_addr(listen_addr_.c_str());
+  server.sin_port = htons(config_["listen_port"].as<int>());
+  server.sin_addr.s_addr = inet_addr(config_["listen_addr"].as<std::string>().c_str());
 
   bool flag = true;
   setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
@@ -83,7 +84,75 @@ ReturnCode ClientEpoll::InitRawSendSocket() {
   return ReturnCode::SUCCESS;
 }
 
-ReturnCode ClientEpoll::SendToServer() {
+std::unique_ptr<char> ClientEpoll::ConstructPacket(char* raw_data, int data_len) {
+  struct tcphdr tcp_header = ConstructTCPHeader();
+  struct iphdr ip_header = ConstructIPHeader();
+  std::unique_ptr<char> res;
+}
+
+struct iphdr ClientEpoll::ConstructIPHeader() {
+  struct iphdr header;
+  memst(&header, 0, IP_HEADER_LEN);
+  header.ip_v = IPVERSION;
+  header.ip_hl = IP_HEADER_LEN / 4;
+  header.ip_tos = 0;
+  header.ip_len = htons(IP_HEADER_LEN + TCP_HEADER_LEN);
+  header.ip_id = 0;
+  header.ip_off = 0;
+  header.ip_ttl = MAXTTL;
+  header.ip_p = IPPROTO_TCP;
+  header.ip_sum = 0;
+  inet_pton(AF_INET, config_["send_addr"].as<char*>(), &header.ip_src.s_addr);
+  inet_pton(AF_INET, config_["server_addr"].as<char*>(), &header.ip_dst.s_addr);
+  return header;
+}
+
+struct tcphdr ClientEpoll::ConstructTCPHeader() {
+  struct tcphdr header;
+  memset(&header, 0, TCP_HEADER_LEN);
+  header.source = htons(config_["send_port"].as<int>());
+  header.dest = htons(config_["server_port"].as<int>());
+  header.doff = TCP_HEADER_LEN / 4;
+  header.syn = 0;
+  header.window = htons(4096);
+  header.check = 0;
+  header.seq = htons(seq_num_);
+  header.ack_seq = 0;
+  return header;
+}
+
+struct TCPPseudoHeader ClientEpoll::ConstructTCPPseudoHeader() {
+  struct TCPPseudoHeader header;
+  memset(&header, 0, sizeof(struct TCPPseudoHeader));
+  inet_pton(AF_INET, config_["send_addr"].as<char*>(), &header.src);
+  inet_pton(AF_INET, config_["server_addr"].as<char*>(), &header.dst);
+  header.zero = 0;
+  header.protocol = IPPROTO_TCP;
+  header.total_len = ;
+  return header;
+}
+
+unsigned short ClientEpoll::CalcCheckSum(const char* buf) {
+  size_t size = TCP_HEADER_LEN + sizeof(struct TCPPseudoHeader);
+  unsigned int checkSum = 0;
+  for (int i = 0; i < size; i += 2) {
+    unsigned short first = (unsigned short)buf[i] << 8;
+    unsigned short second = (unsigned short)buf[i+1] & 0x00ff;
+    checkSum += first + second;
+  }
+  while (1) {
+    unsigned short c = (checkSum >> 16);
+    if (c > 0) {
+      checkSum = (checkSum << 16) >> 16;
+      checkSum += c;
+    } else {
+      break;
+    }
+  }
+  return ~checkSum;
+}
+
+ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char> packet) {
   return ReturnCode::SUCCESS;
 }
 
@@ -104,13 +173,8 @@ void ClientEpoll::StartMainEpoll() {
         if (read_bytes_num < 0 && errno != EAGAIN) {
           LOG_ERROR("Read From Client Error");
         } else {
-          char host[NI_MAXHOST], port[NI_MAXSERV];
-          getnameinfo(
-            (struct sockaddr*)&peer_addr, peer_addr_len,
-            host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICSERV);
-          LOG_INFO("Peer addr is: %s, port is: %d", host, std::stoi(std::string{port}));
-          LOG_INFO("Data: %s.", read_buf);
-          //SendToSever();
+          std::unique_ptr<char> packet = ConstructPacket(read_buf, read_bytes_num);
+          SendToServer(packet);
         }
       }
     }

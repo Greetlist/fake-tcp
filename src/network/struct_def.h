@@ -5,20 +5,17 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-struct PseudoHeader {
-  unsigned int src_ip;
-  unsigned int dst_ip;
+struct TCPPseudoHeader {
+  unsigned int src;
+  unsigned int dst;
   unsigned short zero:8;
   unsigned short protocol:8;
   unsigned short total_len;
 };
 
-struct PacketHeader {
-  struct iphdr ip_header;
-  union protocol_header {
-    struct tcphdr;
-    struct udphdr;
-  };
-};
+constexpr unsigned int ETH_HEADER_LEN = sizeof(struct ethhdr);
+constexpr unsigned int IP_HEADER_LEN = sizeof(struct iphdr);
+constexpr unsigned int UDP_HEADER_LEN = sizeof(struct udphdr);
+constexpr unsigned int TCP_HEADER_LEN = sizeof(struct tcphdr);
 
 #endif

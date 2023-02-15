@@ -8,6 +8,7 @@ ServerEpoll::ServerEpoll(const std::string& raw_addr, const int& raw_port, const
 }
 
 ReturnCode ServerEpoll::Init() {
+  LOG_INFO("Ethenet header len is: [%d], ip header len is: [%d]", ETH_HEADER_LEN, IP_HEADER_LEN);
   ReturnCode ret = ReturnCode::SUCCESS;
   main_ep_fd_ = epoll_create1(0);
   if (main_ep_fd_ < 0) {
@@ -112,16 +113,28 @@ void ServerEpoll::StartMainEpoll() {
         if (read_bytes_num < 0 && errno != EAGAIN) {
           LOG_ERROR("Read From Client Error");
         } else {
-          struct iphdr* ip_header = (struct iphdr*)(read_buf + 14);
-          LOG_INFO("Recv len: %d, content: [%s]", read_bytes_num, read_buf);
-          LOG_INFO("src addr is : %s", inet_ntoa(((struct sockaddr_in*)&peer_addr)->sin_addr));
-          LOG_INFO("Layer-4 protocol %s\n", TransportProtocol(ip_header->protocol).c_str());
-          //ExtractRawPacket();
-          //SendToLocalApplication();
+          MainProcess(read_buf);
         }
       }
     }
   }
+}
+
+void ServerEpoll::MainProcess(char* raw_packet) {
+  //std::unique_ptr<char*> real_data = ExtractData(read_buf);
+  //SendToLocalApplication();
+}
+
+std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet) {
+  struct iphdr* ip_header = (struct iphdr*)(raw_packet + ETH_HEADER_LEN);
+  struct udphdr* udp_header = (struct udphdr*)(raw_packet + ETH_HEADER_LEN + IP_HEADER_LEN);
+  unsigned short raw_data_len = udp_header->len - UDP_HEADER_LEN;
+  std::unique_ptr<char> raw_data(new char[raw_data_len]);
+  memmove(raw_data.get(), udp_header + UDP_HEADER_LEN, raw_data_len);
+  return raw_data;
+}
+
+ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char> raw_data) {
 }
 
 std::string ServerEpoll::TransportProtocol(unsigned char code) {

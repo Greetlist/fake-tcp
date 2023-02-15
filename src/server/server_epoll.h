@@ -20,7 +20,7 @@
 
 #include "common/return_code.h"
 #include "common/common_def.h"
-#include "network/helper_base.h"
+#include "network/struct_def.h"
 #include "logger/logger.h"
 #include "epoll_server/global_def.h"
 #include "util/fd_util.h"
@@ -42,8 +42,13 @@ class ServerEpoll {
   ReturnCode InitSockFilter(); // Init filter for raw socket
   ReturnCode InitRealSendSocket(); // send to real server
   void StartMainEpoll();
-  std::string TransportProtocol(unsigned char);
 
+  void MainProcess(char*);
+  std::unique_ptr<char> ExtractData(char*);
+  ReturnCode SendToLocalApplication(std::unique_ptr<char>);
+
+  std::string TransportProtocol(unsigned char);
+ private:
   std::string raw_addr_;
   int raw_port_;
   int raw_recv_fd_;

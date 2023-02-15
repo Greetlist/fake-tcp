@@ -18,7 +18,7 @@
 
 #include "common/return_code.h"
 #include "common/common_def.h"
-#include "network/helper_base.h"
+#include "network/struct_def.h"
 #include "logger/logger.h"
 #include "epoll_server/global_def.h"
 
@@ -26,7 +26,7 @@ namespace ftcp {
 
 class ClientEpoll {
  public:
-  explicit ClientEpoll(const std::string&, const int&);
+  explicit ClientEpoll(const std::string& config_file);
   ~ClientEpoll() {
     Stop();
   };
@@ -36,14 +36,17 @@ class ClientEpoll {
  private:
   ReturnCode InitListenSocket(); // listen socket recv packet from local application(client side).
   ReturnCode InitRawSendSocket(); // raw socket, send raw packet to server
-  ReturnCode SendToServer();
+  std::unique_ptr<char> ConstructPacket(char* data, int data_len);
+  struct iphdr ConstructIPHeader();
+  struct tcphdr ConstructTCPHeader();
+  struct TCPPseudoHeader ConstructTCPPseudoHeader();
+  unsigned short CalcCheckSum(const char* buf);
+  ReturnCode SendToServer(std::unique_ptr<char> packet);
   void StartMainEpoll();
 
-  std::string listen_addr_;
-  int listen_port_;
-  int listen_fd_;
-  std::string server_addr_;
-  int server_port_;
+  std::string config_file_;
+  YAML::Node config_;
+  uint64_t seq_num_ = 10;
   int packet_send_fd_;
   int main_ep_fd_;
   std::atomic<bool> stop_;
