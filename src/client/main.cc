@@ -1,5 +1,4 @@
 #include "client/client_epoll.h"
-#include "yaml-cpp/yaml.h"
 #include "gflags/gflags.h"
 
 DEFINE_string(config_file, "config.yml", "core config file");

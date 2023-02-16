@@ -17,5 +17,6 @@ constexpr unsigned int ETH_HEADER_LEN = sizeof(struct ethhdr);
 constexpr unsigned int IP_HEADER_LEN = sizeof(struct iphdr);
 constexpr unsigned int UDP_HEADER_LEN = sizeof(struct udphdr);
 constexpr unsigned int TCP_HEADER_LEN = sizeof(struct tcphdr);
+constexpr unsigned int TCP_P_HEADER_LEN = sizeof(struct TCPPseudoHeader);
 
 #endif

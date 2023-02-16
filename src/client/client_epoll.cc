@@ -85,25 +85,36 @@ ReturnCode ClientEpoll::InitRawSendSocket() {
 }
 
 std::unique_ptr<char> ClientEpoll::ConstructPacket(char* raw_data, int data_len) {
+  struct TCPPseudoHeader tcp_p_header = ConstructTCPPseudoHeader(data_len);
   struct tcphdr tcp_header = ConstructTCPHeader();
+  char total_tcp_segment[TCP_P_HEADER_LEN + TCP_HEADER_LEN + data_len];
+  memmove(total_tcp_segment, &tcp_p_header, TCP_P_HEADER_LEN);
+  memmove(total_tcp_segment + TCP_P_HEADER_LEN, &tcp_header, TCP_HEADER_LEN);
+  memmove(total_tcp_segment + TCP_P_HEADER_LEN + TCP_HEADER_LEN, raw_data, data_len);
+  tcp_header.check = CalcCheckSum(total_tcp_segment);
+
   struct iphdr ip_header = ConstructIPHeader();
-  std::unique_ptr<char> res;
+  std::unique_ptr<char> res(new char[IP_HEADER_LEN + TCP_HEADER_LEN + data_len]);
+  memmove(res.get(), &ip_header, IP_HEADER_LEN);
+  memmove(res.get() + IP_HEADER_LEN, &tcp_header, TCP_HEADER_LEN);
+  memmove(res.get() + IP_HEADER_LEN + TCP_HEADER_LEN, raw_data, data_len);
+  return res;
 }
 
 struct iphdr ClientEpoll::ConstructIPHeader() {
   struct iphdr header;
-  memst(&header, 0, IP_HEADER_LEN);
-  header.ip_v = IPVERSION;
-  header.ip_hl = IP_HEADER_LEN / 4;
-  header.ip_tos = 0;
-  header.ip_len = htons(IP_HEADER_LEN + TCP_HEADER_LEN);
-  header.ip_id = 0;
-  header.ip_off = 0;
-  header.ip_ttl = MAXTTL;
-  header.ip_p = IPPROTO_TCP;
-  header.ip_sum = 0;
-  inet_pton(AF_INET, config_["send_addr"].as<char*>(), &header.ip_src.s_addr);
-  inet_pton(AF_INET, config_["server_addr"].as<char*>(), &header.ip_dst.s_addr);
+  memset(&header, 0, IP_HEADER_LEN);
+  header.version = IPVERSION;
+  header.ihl = IP_HEADER_LEN / 4;
+  header.tos = 0;
+  header.tot_len = htons(IP_HEADER_LEN + TCP_HEADER_LEN);
+  header.id = 0;
+  header.frag_off = 0;
+  header.ttl = MAXTTL;
+  header.protocol = IPPROTO_TCP;
+  header.check = 0;
+  inet_pton(AF_INET, config_["send_addr"].as<std::string>().c_str(), &header.saddr);
+  inet_pton(AF_INET, config_["server_addr"].as<std::string>().c_str(), &header.daddr);
   return header;
 }
 
@@ -114,6 +125,8 @@ struct tcphdr ClientEpoll::ConstructTCPHeader() {
   header.dest = htons(config_["server_port"].as<int>());
   header.doff = TCP_HEADER_LEN / 4;
   header.syn = 0;
+  header.ack = 1;
+  header.urg = 1;
   header.window = htons(4096);
   header.check = 0;
   header.seq = htons(seq_num_);
@@ -121,19 +134,19 @@ struct tcphdr ClientEpoll::ConstructTCPHeader() {
   return header;
 }
 
-struct TCPPseudoHeader ClientEpoll::ConstructTCPPseudoHeader() {
+struct TCPPseudoHeader ClientEpoll::ConstructTCPPseudoHeader(int data_len) {
   struct TCPPseudoHeader header;
-  memset(&header, 0, sizeof(struct TCPPseudoHeader));
-  inet_pton(AF_INET, config_["send_addr"].as<char*>(), &header.src);
-  inet_pton(AF_INET, config_["server_addr"].as<char*>(), &header.dst);
+  memset(&header, 0, TCP_P_HEADER_LEN);
+  inet_pton(AF_INET, config_["send_addr"].as<std::string>().c_str(), &header.src);
+  inet_pton(AF_INET, config_["server_addr"].as<std::string>().c_str(), &header.dst);
   header.zero = 0;
   header.protocol = IPPROTO_TCP;
-  header.total_len = ;
+  header.total_len = htons(TCP_HEADER_LEN + data_len);
   return header;
 }
 
 unsigned short ClientEpoll::CalcCheckSum(const char* buf) {
-  size_t size = TCP_HEADER_LEN + sizeof(struct TCPPseudoHeader);
+  size_t size = TCP_HEADER_LEN + TCP_P_HEADER_LEN;
   unsigned int checkSum = 0;
   for (int i = 0; i < size; i += 2) {
     unsigned short first = (unsigned short)buf[i] << 8;
@@ -152,7 +165,14 @@ unsigned short ClientEpoll::CalcCheckSum(const char* buf) {
   return ~checkSum;
 }
 
-ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char> packet) {
+ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char>& packet) {
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(struct sockaddr_in));
+  addr.sin_family = AF_INET;
+  inet_pton(AF_INET, config_["send_addr"].as<std::string>().c_str(), &addr.sin_addr.s_addr);
+  addr.sin_port = htons(config_["send_port"].as<int>());
+  socklen_t len = sizeof(struct sockaddr_in);
+  int n = sendto(packet_send_fd_, packet.get(), strlen(packet.get()), 0, (struct sockaddr*)&addr, len);
   return ReturnCode::SUCCESS;
 }
 

@@ -21,6 +21,8 @@
 #include "network/struct_def.h"
 #include "logger/logger.h"
 #include "epoll_server/global_def.h"
+#include "yaml-cpp/yaml.h"
+#include "util/fd_util.h"
 
 namespace ftcp {
 
@@ -39,14 +41,15 @@ class ClientEpoll {
   std::unique_ptr<char> ConstructPacket(char* data, int data_len);
   struct iphdr ConstructIPHeader();
   struct tcphdr ConstructTCPHeader();
-  struct TCPPseudoHeader ConstructTCPPseudoHeader();
+  struct TCPPseudoHeader ConstructTCPPseudoHeader(int data_len);
   unsigned short CalcCheckSum(const char* buf);
-  ReturnCode SendToServer(std::unique_ptr<char> packet);
+  ReturnCode SendToServer(std::unique_ptr<char>& packet);
   void StartMainEpoll();
 
   std::string config_file_;
   YAML::Node config_;
   uint64_t seq_num_ = 10;
+  int listen_fd_;
   int packet_send_fd_;
   int main_ep_fd_;
   std::atomic<bool> stop_;
