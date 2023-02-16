@@ -193,6 +193,7 @@ void ClientEpoll::StartMainEpoll() {
         if (read_bytes_num < 0 && errno != EAGAIN) {
           LOG_ERROR("Read From Client Error");
         } else {
+          LOG_INFO("recv raw_data: %s", read_buf);
           std::unique_ptr<char> packet = ConstructPacket(read_buf, read_bytes_num);
           SendToServer(packet);
         }

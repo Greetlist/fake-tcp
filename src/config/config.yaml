@@ -1,0 +1,8 @@
+server_addr: 192.168.199.123
+server_port: 1234
+
+listen_port: 10000
+listen_addr: 0.0.0.0
+
+send_addr: 0.0.0.0
+send_port: 11000
