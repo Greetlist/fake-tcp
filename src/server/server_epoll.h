@@ -23,13 +23,14 @@
 #include "network/struct_def.h"
 #include "logger/logger.h"
 #include "epoll_server/global_def.h"
+#include "yaml-cpp/yaml.h"
 #include "util/fd_util.h"
 
 namespace ftcp {
 
 class ServerEpoll {
  public:
-  explicit ServerEpoll(const std::string&, const int&, const std::string&, const int&);
+  explicit ServerEpoll(const std::string&);
   ~ServerEpoll() {
     Stop();
   };
@@ -43,18 +44,16 @@ class ServerEpoll {
   ReturnCode InitRealSendSocket(); // send to real server
   void StartMainEpoll();
 
-  void MainProcess(char*);
-  std::unique_ptr<char> ExtractData(char*);
-  ReturnCode SendToLocalApplication(std::unique_ptr<char>);
+  void MainProcess(char*, int);
+  std::unique_ptr<char> ExtractData(char*, int);
+  ReturnCode SendToLocalApplication(std::unique_ptr<char>&&);
 
   std::string TransportProtocol(unsigned char);
  private:
-  std::string raw_addr_;
-  int raw_port_;
+  std::string config_file_;
+  YAML::Node config_;
   int raw_recv_fd_;
-  std::string real_addr_;
-  int real_port_;
-  int real_fd_;
+  int send_fd_;
   int main_ep_fd_;
   std::atomic<bool> stop_;
   static constexpr int kEventLen = 128;

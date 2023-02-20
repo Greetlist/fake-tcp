@@ -3,12 +3,13 @@
 
 namespace ftcp {
 
-ServerEpoll::ServerEpoll(const std::string& raw_addr, const int& raw_port, const std::string& real_addr, const int& real_port) : raw_addr_(raw_addr), raw_port_(raw_port), real_addr_(real_addr), real_port_(real_port) {
+ServerEpoll::ServerEpoll(const std::string& config_file) : config_file_(config_file) {
   stop_ = false;
 }
 
 ReturnCode ServerEpoll::Init() {
   LOG_INFO("Ethenet header len is: [%d], ip header len is: [%d]", ETH_HEADER_LEN, IP_HEADER_LEN);
+  config_ = YAML::LoadFile(config_file_);
   ReturnCode ret = ReturnCode::SUCCESS;
   main_ep_fd_ = epoll_create1(0);
   if (main_ep_fd_ < 0) {
@@ -56,8 +57,7 @@ ReturnCode ServerEpoll::InitRawRecvSocket() {
 }
 
 ReturnCode ServerEpoll::BindDevice() {
-  const char *opt = "enp88s0";
-  if (setsockopt(raw_recv_fd_, SOL_SOCKET, SO_BINDTODEVICE, opt, strlen(opt) + 1) < 0) {
+  if (setsockopt(raw_recv_fd_, SOL_SOCKET, SO_BINDTODEVICE, config_["bind_interface"].as<std::string>().c_str(), config_["bind_interface"].as<std::string>().size()) < 0) {
     LOG_ERROR("bind device error");
     return ReturnCode::BIND_DEVICE_ERROR;
   }
@@ -66,7 +66,7 @@ ReturnCode ServerEpoll::BindDevice() {
   // SIOCGIFFLAGS 0x8913      /* get flags            */
   // SIOCSIFFLAGS 0x8914      /* set flags            */
   struct ifreq ethreq;
-  strncpy(ethreq.ifr_name, "enp88s0", IF_NAMESIZE);
+  strncpy(ethreq.ifr_name, config_["bind_interface"].as<std::string>().c_str(), IF_NAMESIZE);
   if (ioctl(raw_recv_fd_, SIOCGIFFLAGS, &ethreq) == -1) {
     LOG_ERROR("ioctl error");
     return ReturnCode::IOCTL_ERROR;
@@ -93,6 +93,11 @@ ReturnCode ServerEpoll::InitSockFilter() {
 }
 
 ReturnCode ServerEpoll::InitRealSendSocket() {
+  send_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
+  if (send_fd_ < 0) {
+    LOG_ERROR("create send udp socket error");
+    return ReturnCode::CREATE_SOCK_ERROR;
+  }
   return ReturnCode::SUCCESS;
 }
 
@@ -113,28 +118,29 @@ void ServerEpoll::StartMainEpoll() {
         if (read_bytes_num < 0 && errno != EAGAIN) {
           LOG_ERROR("Read From Client Error");
         } else {
-          MainProcess(read_buf);
+          MainProcess(read_buf, read_bytes_num);
         }
       }
     }
   }
 }
 
-void ServerEpoll::MainProcess(char* raw_packet) {
-  //std::unique_ptr<char*> real_data = ExtractData(read_buf);
-  //SendToLocalApplication();
+void ServerEpoll::MainProcess(char* raw_packet, int total_len) {
+  std::unique_ptr<char> real_data = ExtractData(raw_packet, total_len);
+  SendToLocalApplication(std::move(real_data));
 }
 
-std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet) {
+std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) {
   struct iphdr* ip_header = (struct iphdr*)(raw_packet + ETH_HEADER_LEN);
-  struct udphdr* udp_header = (struct udphdr*)(raw_packet + ETH_HEADER_LEN + IP_HEADER_LEN);
-  unsigned short raw_data_len = udp_header->len - UDP_HEADER_LEN;
+  struct tcphdr* tcp_header = (struct tcphdr*)(raw_packet + ETH_HEADER_LEN + IP_HEADER_LEN);
+  unsigned short raw_data_len = total_len - ETH_HEADER_LEN - IP_HEADER_LEN - TCP_HEADER_LEN;
   std::unique_ptr<char> raw_data(new char[raw_data_len]);
-  memmove(raw_data.get(), udp_header + UDP_HEADER_LEN, raw_data_len);
+  memmove(raw_data.get(), tcp_header + TCP_HEADER_LEN, raw_data_len);
   return raw_data;
 }
 
-ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char> raw_data) {
+ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char>&& raw_data) {
+  LOG_INFO("Recv raw_real_data is: %s", raw_data.get());
 }
 
 std::string ServerEpoll::TransportProtocol(unsigned char code) {

@@ -1,7 +1,7 @@
 #include "client/client_epoll.h"
 #include "gflags/gflags.h"
 
-DEFINE_string(config_file, "config.yml", "core config file");
+DEFINE_string(config_file, "client_config.yml", "core config file");
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

@@ -20,8 +20,10 @@ target("epoll_server")
 
 target("fake-tcp-server")
     set_kind("binary")
+    add_includedirs("src/")
     add_files("src/server/*.cc")
-    add_deps("epoll_server", "logger")
+    add_packages("glog", "yaml-cpp")
+    add_deps("util", "logger")
 
 target("fake-tcp-client")
     set_kind("binary")

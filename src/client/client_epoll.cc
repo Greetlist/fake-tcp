@@ -61,7 +61,11 @@ ReturnCode ClientEpoll::InitListenSocket() {
     LOG_ERROR("Epoll Add Error");
     return ReturnCode::EP_CONTROL_ERROR;
   }
-  LOG_SUCCESS("Create listen socket success");
+  LOG_SUCCESS(
+      "Create listen socket success, start listen on: [%s:%d]",
+      config_["listen_addr"].as<std::string>().c_str(),
+      config_["listen_port"].as<int>()
+  );
   return ReturnCode::SUCCESS;
 }
 
@@ -94,10 +98,12 @@ std::unique_ptr<char> ClientEpoll::ConstructPacket(char* raw_data, int data_len)
   tcp_header.check = CalcCheckSum(total_tcp_segment);
 
   struct iphdr ip_header = ConstructIPHeader();
-  std::unique_ptr<char> res(new char[IP_HEADER_LEN + TCP_HEADER_LEN + data_len]);
-  memmove(res.get(), &ip_header, IP_HEADER_LEN);
-  memmove(res.get() + IP_HEADER_LEN, &tcp_header, TCP_HEADER_LEN);
-  memmove(res.get() + IP_HEADER_LEN + TCP_HEADER_LEN, raw_data, data_len);
+  char* buf = new char[IP_HEADER_LEN + TCP_HEADER_LEN + data_len];
+  memset(buf, 0, IP_HEADER_LEN + TCP_HEADER_LEN + data_len);
+  memmove(buf, &ip_header, IP_HEADER_LEN);
+  memmove(buf + IP_HEADER_LEN, &tcp_header, TCP_HEADER_LEN);
+  memmove(buf + IP_HEADER_LEN + TCP_HEADER_LEN, raw_data, data_len);
+  std::unique_ptr<char> res(buf);
   return res;
 }
 
@@ -165,14 +171,22 @@ unsigned short ClientEpoll::CalcCheckSum(const char* buf) {
   return ~checkSum;
 }
 
-ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char>& packet) {
+ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char>&& packet, int data_len) {
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(struct sockaddr_in));
   addr.sin_family = AF_INET;
-  inet_pton(AF_INET, config_["send_addr"].as<std::string>().c_str(), &addr.sin_addr.s_addr);
-  addr.sin_port = htons(config_["send_port"].as<int>());
+  inet_pton(AF_INET, config_["server_addr"].as<std::string>().c_str(), &addr.sin_addr.s_addr);
+  addr.sin_port = htons(config_["server_port"].as<int>());
   socklen_t len = sizeof(struct sockaddr_in);
-  int n = sendto(packet_send_fd_, packet.get(), strlen(packet.get()), 0, (struct sockaddr*)&addr, len);
+  char* buf[data_len];
+  memmove(buf, packet.get() + IP_HEADER_LEN + TCP_HEADER_LEN, data_len);
+  LOG_INFO("data is: %s", buf);
+  int n = sendto(packet_send_fd_, packet.get(), IP_HEADER_LEN + TCP_HEADER_LEN + data_len, 0, (struct sockaddr*)&addr, len);
+  if (n < 0) {
+    LOG_ERROR("Send to server error");
+    perror("Send Error");
+  }
+  LOG_INFO("Success Send %d bytes to server", n);
   return ReturnCode::SUCCESS;
 }
 
@@ -187,6 +201,7 @@ void ClientEpoll::StartMainEpoll() {
       if (events[i].data.fd == listen_fd_) {  // read data from local application, send to fake-tcp server
         int client_fd = events[i].data.fd;
         char read_buf[MAX_PAYLOAD];
+        memset(read_buf, 0, MAX_PAYLOAD);
         int read_bytes_num = recvfrom(
             client_fd, read_buf, MAX_PAYLOAD, 0,
             (struct sockaddr*)&peer_addr, &peer_addr_len);
@@ -195,7 +210,7 @@ void ClientEpoll::StartMainEpoll() {
         } else {
           LOG_INFO("recv raw_data: %s", read_buf);
           std::unique_ptr<char> packet = ConstructPacket(read_buf, read_bytes_num);
-          SendToServer(packet);
+          SendToServer(std::move(packet), read_bytes_num);
         }
       }
     }

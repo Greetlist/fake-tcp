@@ -43,7 +43,7 @@ class ClientEpoll {
   struct tcphdr ConstructTCPHeader();
   struct TCPPseudoHeader ConstructTCPPseudoHeader(int data_len);
   unsigned short CalcCheckSum(const char* buf);
-  ReturnCode SendToServer(std::unique_ptr<char>& packet);
+  ReturnCode SendToServer(std::unique_ptr<char>&& packet, int data_len);
   void StartMainEpoll();
 
   std::string config_file_;
