@@ -95,9 +95,10 @@ std::unique_ptr<char> ClientEpoll::ConstructPacket(char* raw_data, int data_len)
   memmove(total_tcp_segment, &tcp_p_header, TCP_P_HEADER_LEN);
   memmove(total_tcp_segment + TCP_P_HEADER_LEN, &tcp_header, TCP_HEADER_LEN);
   memmove(total_tcp_segment + TCP_P_HEADER_LEN + TCP_HEADER_LEN, raw_data, data_len);
-  tcp_header.check = CalcCheckSum(total_tcp_segment);
+  tcp_header.check = CalcCheckSum(total_tcp_segment, TCP_P_HEADER_LEN + TCP_HEADER_LEN + data_len);
+  LOG_INFO("%x", tcp_header.check);
 
-  struct iphdr ip_header = ConstructIPHeader();
+  struct iphdr ip_header = ConstructIPHeader(data_len);
   char* buf = new char[IP_HEADER_LEN + TCP_HEADER_LEN + data_len];
   memset(buf, 0, IP_HEADER_LEN + TCP_HEADER_LEN + data_len);
   memmove(buf, &ip_header, IP_HEADER_LEN);
@@ -107,13 +108,13 @@ std::unique_ptr<char> ClientEpoll::ConstructPacket(char* raw_data, int data_len)
   return res;
 }
 
-struct iphdr ClientEpoll::ConstructIPHeader() {
+struct iphdr ClientEpoll::ConstructIPHeader(int data_len) {
   struct iphdr header;
   memset(&header, 0, IP_HEADER_LEN);
   header.version = IPVERSION;
   header.ihl = IP_HEADER_LEN / 4;
   header.tos = 0;
-  header.tot_len = htons(IP_HEADER_LEN + TCP_HEADER_LEN);
+  header.tot_len = htons(IP_HEADER_LEN + TCP_HEADER_LEN + data_len);
   header.id = 0;
   header.frag_off = 0;
   header.ttl = MAXTTL;
@@ -151,24 +152,29 @@ struct TCPPseudoHeader ClientEpoll::ConstructTCPPseudoHeader(int data_len) {
   return header;
 }
 
-unsigned short ClientEpoll::CalcCheckSum(const char* buf) {
-  size_t size = TCP_HEADER_LEN + TCP_P_HEADER_LEN;
-  unsigned int checkSum = 0;
-  for (int i = 0; i < size; i += 2) {
-    unsigned short first = (unsigned short)buf[i] << 8;
-    unsigned short second = (unsigned short)buf[i+1] & 0x00ff;
-    checkSum += first + second;
+unsigned short ClientEpoll::CalcCheckSum(const char* buf, int size) {
+  unsigned int check_sum = 0;
+  unsigned short* ptr = (unsigned short*)buf;
+  while (size > 1) {
+    check_sum += *ptr;
+    ptr++;
+    size -= 2;
+  }
+  if (size > 0) {
+    char final_short[2] = {0};
+    final_short[0] = *(char*)ptr;
+    check_sum += *(unsigned short*)final_short;
   }
   while (1) {
-    unsigned short c = (checkSum >> 16);
+    unsigned short c = (check_sum >> 16);
     if (c > 0) {
-      checkSum = (checkSum << 16) >> 16;
-      checkSum += c;
+      check_sum = (check_sum << 16) >> 16;
+      check_sum += c;
     } else {
       break;
     }
   }
-  return ~checkSum;
+  return ~check_sum;
 }
 
 ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char>&& packet, int data_len) {

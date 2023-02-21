@@ -39,10 +39,10 @@ class ClientEpoll {
   ReturnCode InitListenSocket(); // listen socket recv packet from local application(client side).
   ReturnCode InitRawSendSocket(); // raw socket, send raw packet to server
   std::unique_ptr<char> ConstructPacket(char* data, int data_len);
-  struct iphdr ConstructIPHeader();
+  struct iphdr ConstructIPHeader(int data_len);
   struct tcphdr ConstructTCPHeader();
   struct TCPPseudoHeader ConstructTCPPseudoHeader(int data_len);
-  unsigned short CalcCheckSum(const char* buf);
+  unsigned short CalcCheckSum(const char* buf, int size);
   ReturnCode SendToServer(std::unique_ptr<char>&& packet, int data_len);
   void StartMainEpoll();
 
