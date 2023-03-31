@@ -8,12 +8,12 @@ class EpollServerFactory {
  public:
    EpollServerFactory() = delete;
    ~EpollServerFactory();
-   static EpollServerBase* GetServer(const ServerType& server_type) {
-     EpollServerFactory::InitServer(server_type);
+   static EpollServerBase* GetServer(const ServerType& server_type, const std::string& listen_addr="0.0.0.0", const int& listen_port=1000) {
+     EpollServerFactory::InitServer(server_type, listen_addr, listen_port);
      return instance_;
    }
 
-   static void InitServer(const ServerType& server_type, const std::string& listen_addr="0.0.0.0", const int& listen_port=10000) {
+   static void InitServer(const ServerType& server_type, const std::string& listen_addr, const int& listen_port) {
      if (instance_ == nullptr) {
        std::call_once(instance_guard_, [=]() {
          if (server_type == ServerType::TCP) {
