@@ -14,6 +14,7 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <functional>
 
 #include "util/fd_util.h"
 #include "util/ipc_unix.h"
@@ -23,12 +24,17 @@
 namespace ftcp {
 
 class EpollServerBase {
- public:
+public:
   EpollServerBase() {};
   virtual ~EpollServerBase() {};
   virtual ReturnCode Init() {return ReturnCode::SUCCESS;}
   virtual void Start() {}
   virtual void Stop() {}
+  virtual void SetDataCallback(std::function<void(char*, int)> f) {
+    callback_func_ = f;
+  }
+private:
+  std::function<void(char*, int)> callback_func_;
 };
 
 } //namespace ftcp

@@ -31,9 +31,9 @@ class EpollUDPServer : public EpollServerBase {
   ~EpollUDPServer() {
     Stop();
   };
-  virtual ReturnCode Init();
-  virtual void Start();
-  virtual void Stop();
+  virtual ReturnCode Init() override;
+  virtual void Start() override;
+  virtual void Stop() override;
  private:
   ReturnCode InitListenSocket(); // listen socket recv packet from local application(client side).
   ReturnCode InitRawSendSocket(); // raw socket, send raw packet to server

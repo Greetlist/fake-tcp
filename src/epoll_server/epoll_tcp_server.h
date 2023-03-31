@@ -31,9 +31,9 @@ class EpollTCPServer : public EpollServerBase {
   ~EpollTCPServer() {
     Stop();
   };
-  virtual ReturnCode Init();
-  virtual void Start();
-  virtual void Stop();
+  virtual ReturnCode Init() override;
+  virtual void Start() override;
+  virtual void Stop() override;
  private:
   ReturnCode InitListenSocket();
   void CreateThreads();
