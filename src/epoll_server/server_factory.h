@@ -9,7 +9,7 @@ class EpollServerFactory {
    EpollServerFactory() = delete;
    ~EpollServerFactory();
    static EpollServerBase* GetServer(const ServerType& server_type, const std::string& listen_addr="0.0.0.0", const int& listen_port=1000, const int& parallel=5) {
-     EpollServerFactory::InitServer(server_type, listen_addr, listen_port);
+     EpollServerFactory::InitServer(server_type, listen_addr, listen_port, parallel);
      return instance_;
    }
 
