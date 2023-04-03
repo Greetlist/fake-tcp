@@ -156,18 +156,15 @@ void EpollTCPServer::MainWorker(int pair_fd) {
           LOG_ERROR("Epoll Add Error");
           continue;
         }
-      } else {
-        // read from clien_fd;
-        int buf_size = 1024;
+      } else {   // read from clien_fd
+        int buf_size = 2048; // enough for client data
         int client_fd = events[i].data.fd;
-        struct iovec read_vec[4];
-        char buf_vec[4][buf_size];
-        for (int i = 0; i < 4; ++i) {
-          memset(buf_vec[i], 0, buf_size);
-          read_vec[i].iov_base = buf_vec[i];
-          read_vec[i].iov_len = buf_size;
-        }
-        int n_read = readv(client_fd, read_vec, 4);
+        struct iovec read_vec;
+        char buf_vec[buf_size];
+        memset(buf_vec, 0, buf_size);
+        read_vec.iov_base = buf_vec;
+        read_vec.iov_len = buf_size;
+        int n_read = readv(client_fd, &read_vec, 1);
         if (n_read < 0 && errno != EAGAIN) {
           LOG_ERROR("Read From Client Error");
         } else if (n_read == 0) {
@@ -175,7 +172,8 @@ void EpollTCPServer::MainWorker(int pair_fd) {
         } else {
           int idx = n_read / buf_size + 1;
           for (int i = 0; i < idx; ++i) {
-            LOG_INFO("Index: %d, Data: %s.", i, read_vec[i].iov_base);
+            //LOG_INFO("Index: %d, Data: %s.", i, read_vec[i].iov_base);
+            callback_func_(buf_vec, n_read);
           }
         }
       }

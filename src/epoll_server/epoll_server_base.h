@@ -30,11 +30,11 @@ public:
   virtual ReturnCode Init() {return ReturnCode::SUCCESS;}
   virtual void Start() {}
   virtual void Stop() {}
-  virtual void SetDataCallback(std::function<void(int)> f) {
+  virtual void SetDataCallback(std::function<void(char*, int)> f) {
     callback_func_ = f;
   }
-private:
-  std::function<void(int)> callback_func_;
+protected:
+  std::function<void(char*, int)> callback_func_;
 };
 
 } //namespace ftcp
