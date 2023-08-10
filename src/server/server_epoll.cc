@@ -8,7 +8,7 @@ ServerEpoll::ServerEpoll(const std::string& config_file) : config_file_(config_f
 }
 
 ReturnCode ServerEpoll::Init() {
-  LOG_INFO("Ethenet header len is: [%d], ip header len is: [%d]", ETH_HEADER_LEN, IP_HEADER_LEN);
+  LOG_INFO("Ethenet header len is: [%d], ip header len is: [%d], tcp header len is: [%d]", ETH_HEADER_LEN, IP_HEADER_LEN, TCP_HEADER_LEN);
   config_ = YAML::LoadFile(config_file_);
   ReturnCode ret = ReturnCode::SUCCESS;
   main_ep_fd_ = epoll_create1(0);
@@ -131,11 +131,26 @@ void ServerEpoll::MainProcess(char* raw_packet, int total_len) {
 }
 
 std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) {
-  //struct iphdr* ip_header = (struct iphdr*)(raw_packet + ETH_HEADER_LEN);
+  LOG_INFO("Len is: %d, data is: %s", total_len, raw_packet);
+  struct iphdr* ip_header = (struct iphdr*)(raw_packet + ETH_HEADER_LEN);
   struct tcphdr* tcp_header = (struct tcphdr*)(raw_packet + ETH_HEADER_LEN + IP_HEADER_LEN);
   unsigned short raw_data_len = total_len - ETH_HEADER_LEN - IP_HEADER_LEN - TCP_HEADER_LEN;
+
+  LOG_INFO("IP Version: %d, Transport layer protocol: %s", ip_header->version, TransportProtocol(ip_header->protocol).c_str());
+  char src_ip[INET_ADDRSTRLEN];
+  char dst_ip[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &ip_header->saddr, src_ip, INET_ADDRSTRLEN);
+  inet_ntop(AF_INET, &ip_header->daddr, dst_ip, INET_ADDRSTRLEN);
+  LOG_INFO("IP src ip: %s, dst ip: %s, src port: %d, dst port: %d", src_ip, dst_ip, ntohs(tcp_header->source), ntohs(tcp_header->dest));
+
   std::unique_ptr<char> raw_data(new char[raw_data_len]);
   memmove(raw_data.get(), tcp_header + TCP_HEADER_LEN, raw_data_len);
+
+  int start = ETH_HEADER_LEN + IP_HEADER_LEN + TCP_HEADER_LEN;
+  for (int i = start; i < total_len; ++i) {
+    LOG_INFO("%d", raw_packet[i]);
+  }
+
   return raw_data;
 }
 
