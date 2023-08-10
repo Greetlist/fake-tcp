@@ -156,25 +156,15 @@ void EpollTCPServer::MainWorker(int pair_fd) {
           LOG_ERROR("Epoll Add Error");
           continue;
         }
-      } else {   // read from clien_fd
-        int buf_size = 2048; // enough for client data
-        int client_fd = events[i].data.fd;
-        struct iovec read_vec;
-        char buf_vec[buf_size];
-        memset(buf_vec, 0, buf_size);
-        read_vec.iov_base = buf_vec;
-        read_vec.iov_len = buf_size;
-        int n_read = readv(client_fd, &read_vec, 1);
+      } else {
+        // how to read from client fd is determined by specific business
+        // but callback function must return byte number has read.
+        int n_read = callback_func_(events[i].data.fd);
         if (n_read < 0 && errno != EAGAIN) {
           LOG_ERROR("Read From Client Error");
         } else if (n_read == 0) {
-          LOG_INFO("Client: [%d] close connection.", client_fd);
-        } else {
-          int idx = n_read / buf_size + 1;
-          for (int i = 0; i < idx; ++i) {
-            //LOG_INFO("Index: %d, Data: %s.", i, read_vec[i].iov_base);
-            callback_func_(buf_vec, n_read);
-          }
+          LOG_INFO("Client: [%d] close connection.", events[i].data.fd);
+          epoll_ctl(thread_ep, EPOLL_CTL_DEL, events[i].data.fd, NULL);
         }
       }
     }
