@@ -2,6 +2,9 @@
 
 namespace ftcp {
 
+static char LOGTEXT[][16] = {"", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "SUCCESS"};
+static char LOGCOLOR[][16] = {RESET, MAGENTA, BLUE, YELLOW, RED, RED, GREEN};
+
 void gen_time_str(char* buf, size_t len) {
   memset(buf, 0, len);
   struct timeval t_val;

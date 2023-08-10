@@ -131,7 +131,7 @@ void ServerEpoll::MainProcess(char* raw_packet, int total_len) {
 }
 
 std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) {
-  struct iphdr* ip_header = (struct iphdr*)(raw_packet + ETH_HEADER_LEN);
+  //struct iphdr* ip_header = (struct iphdr*)(raw_packet + ETH_HEADER_LEN);
   struct tcphdr* tcp_header = (struct tcphdr*)(raw_packet + ETH_HEADER_LEN + IP_HEADER_LEN);
   unsigned short raw_data_len = total_len - ETH_HEADER_LEN - IP_HEADER_LEN - TCP_HEADER_LEN;
   std::unique_ptr<char> raw_data(new char[raw_data_len]);
@@ -141,6 +141,7 @@ std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) 
 
 ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char>&& raw_data) {
   LOG_INFO("Recv raw_real_data is: %s", raw_data.get());
+  return ReturnCode::SUCCESS;
 }
 
 std::string ServerEpoll::TransportProtocol(unsigned char code) {

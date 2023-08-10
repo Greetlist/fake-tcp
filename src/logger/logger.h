@@ -29,9 +29,6 @@ enum LEVEL {
 #define WHITE "\x1B[37m"
 #define RESET "\x1B[0m"
 
-static char LOGTEXT[][16] = {"", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "SUCCESS"};
-static char LOGCOLOR[][16] = {RESET, MAGENTA, BLUE, YELLOW, RED, RED, GREEN};
-
 void gen_time_str(char* buf);
 
 void LOG(LEVEL level, const char* file, int line, const char* fmt, ...);
