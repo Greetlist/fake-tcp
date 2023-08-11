@@ -184,9 +184,6 @@ ReturnCode ClientEpoll::SendToServer(std::unique_ptr<char>&& packet, int data_le
   inet_pton(AF_INET, config_["server_addr"].as<std::string>().c_str(), &addr.sin_addr.s_addr);
   addr.sin_port = htons(config_["server_port"].as<int>());
   socklen_t len = sizeof(struct sockaddr_in);
-  char* buf[data_len];
-  memmove(buf, packet.get() + IP_HEADER_LEN + TCP_HEADER_LEN, data_len);
-  LOG_INFO("data is: %s", buf);
   int n = sendto(packet_send_fd_, packet.get(), IP_HEADER_LEN + TCP_HEADER_LEN + data_len, 0, (struct sockaddr*)&addr, len);
   if (n < 0) {
     LOG_ERROR("Send to server error");

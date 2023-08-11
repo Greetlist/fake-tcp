@@ -144,16 +144,11 @@ std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) 
   LOG_INFO("IP src ip: %s, dst ip: %s, src port: %d, dst port: %d", src_ip, dst_ip, ntohs(tcp_header->source), ntohs(tcp_header->dest));
 
   std::unique_ptr<char> raw_data(new char[raw_data_len]);
-  memmove(raw_data.get(), tcp_header + TCP_HEADER_LEN, raw_data_len);
-
-  int start = ETH_HEADER_LEN + IP_HEADER_LEN + TCP_HEADER_LEN;
-  for (int i = start; i < total_len; ++i) {
-    LOG_INFO("%d", raw_packet[i]);
-  }
-
+  memmove(raw_data.get(), raw_packet + ETH_HEADER_LEN + IP_HEADER_LEN + TCP_HEADER_LEN, raw_data_len);
   return raw_data;
 }
 
+//construct udp packet to local application
 ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char>&& raw_data) {
   LOG_INFO("Recv raw_real_data is: %s", raw_data.get());
   return ReturnCode::SUCCESS;
