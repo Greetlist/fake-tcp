@@ -127,7 +127,7 @@ void ServerEpoll::StartMainEpoll() {
 
 void ServerEpoll::MainProcess(char* raw_packet, int total_len) {
   std::unique_ptr<char> real_data = ExtractData(raw_packet, total_len);
-  SendToLocalApplication(std::move(real_data));
+  SendToLocalApplication(std::move(real_data), total_len);
 }
 
 std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) {
@@ -149,12 +149,12 @@ std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) 
 }
 
 //construct udp packet to local application
-ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char>&& raw_data) {
-  int data_len = strlen(raw_data.get());
-  char print_buf[data_len + 1];
-  memcpy(print_buf, raw_data.get(), data_len);
-  print_buf[data_len] = '\0';
-  LOG_INFO("Recv raw_real_data is: %s", data_len);
+ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char>&& raw_data, int total_len) {
+  unsigned short raw_data_len = total_len - ETH_HEADER_LEN - IP_HEADER_LEN - TCP_HEADER_LEN;
+  char print_buf[raw_data_len + 1];
+  memcpy(print_buf, raw_data.get(), raw_data_len);
+  print_buf[raw_data_len] = '\0';
+  LOG_INFO("Recv raw_real_data is: %s", print_buf);
   return ReturnCode::SUCCESS;
 }
 

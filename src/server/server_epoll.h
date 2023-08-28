@@ -46,7 +46,7 @@ class ServerEpoll {
 
   void MainProcess(char*, int);
   std::unique_ptr<char> ExtractData(char*, int);
-  ReturnCode SendToLocalApplication(std::unique_ptr<char>&&);
+  ReturnCode SendToLocalApplication(std::unique_ptr<char>&&, int);
 
   std::string TransportProtocol(unsigned char);
  private:
