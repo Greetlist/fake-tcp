@@ -150,7 +150,11 @@ std::unique_ptr<char> ServerEpoll::ExtractData(char* raw_packet, int total_len) 
 
 //construct udp packet to local application
 ReturnCode ServerEpoll::SendToLocalApplication(std::unique_ptr<char>&& raw_data) {
-  LOG_INFO("Recv raw_real_data is: %s", raw_data.get());
+  int data_len = strlen(raw_data.get());
+  char print_buf[data_len + 1];
+  memcpy(print_buf, raw_data.get(), data_len);
+  print_buf[data_len] = '\0';
+  LOG_INFO("Recv raw_real_data is: %s", data_len);
   return ReturnCode::SUCCESS;
 }
 
